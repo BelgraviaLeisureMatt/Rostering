@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aquatic Day Sheet Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style id="appcss">
+:root{
+  --col:56px;
+  --c-gt3:#92D050;
+  --c-le3:#C6E0B4;
+  --c-unf:#FF0000;
+  --c-dm:#FFFF00;
+  --c-sh:#00B0F0;
+  --c-cl:#FFC000;
+  --c-ex:#13EFF2;
+  --c-sp:#E7B3FF;
+  --c-pt:#F8CBAD;
+  --c-br:#B4C6E7;
+  --c-bm:#FC6DE4;
+  --c-bk:#F3D4F4;
+}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.35 Calibri,Arial,Helvetica,sans-serif;color:#000;background:#f4f5f7}
+header{background:#102a43;color:#fff;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+header h1{font-size:16px;margin:0 12px 0 0;font-family:Arial,sans-serif}
+header label{font-size:12px;font-family:Arial,sans-serif;display:inline-flex;align-items:center;gap:4px}
+button,select,input[type=number]{font:12px Arial;padding:5px 9px;border-radius:4px;border:1px solid #9aa5b1;background:#fff;cursor:pointer}
+button.primary{background:#2e7d4f;color:#fff;border-color:#2e7d4f;font-weight:bold}
+#tabs{display:flex;gap:4px;padding:8px 14px 0;background:#f4f5f7;flex-wrap:wrap}
+.tab{padding:7px 12px;border:1px solid #cbd2d9;border-bottom:none;border-radius:6px 6px 0 0;background:#e4e7eb;font-weight:bold;cursor:pointer;font-family:Arial,sans-serif}
+.tab.active{background:#fff;color:#102a43}
+.tab .sub{display:block;font-weight:normal;font-size:11px;color:#52606d}
+.tab .flag{color:#c0392b;font-weight:bold}
+
+.sheet{background:#fff;margin:0 14px 18px;border:1px solid #cbd2d9;padding:12px;overflow-x:auto}
+.day-title{text-align:center;font-size:20px;font-weight:bold;margin:2px 0 8px;letter-spacing:.03em}
+
+table.ds-grid{border-collapse:collapse;table-layout:fixed;min-width:max-content}
+table.ds-grid td, table.ds-grid th{
+  border:1px solid #bfbfbf;padding:2px 3px;text-align:center;vertical-align:middle;
+  font-family:Calibri,Arial,sans-serif;font-size:11px;overflow:hidden;text-overflow:ellipsis
+}
+table.ds-grid .b-med{border:2px solid #000!important}
+table.ds-grid .b-top-med{border-top:2px solid #000!important}
+table.ds-grid .b-bot-med{border-bottom:2px solid #000!important}
+table.ds-grid .b-left-med{border-left:2px solid #000!important}
+table.ds-grid .b-right-med{border-right:2px solid #000!important}
+table.ds-grid .no-b{border:none!important;background:transparent}
+
+.sp-banner{background:var(--c-sp);font-size:14px!important;font-weight:bold;border:2px solid #000!important}
+.time-cell{font-size:11px;border-top:2px solid #000!important;border-bottom:2px solid #000!important;white-space:normal;line-height:1.1}
+.time-cell.sp{background:var(--c-sp)}
+.time-cell.spare5{background:var(--c-cl);font-weight:bold}
+
+.shift-cell{font-size:14px!important;font-weight:bold;border:2px solid #000!important;cursor:pointer;white-space:nowrap;user-select:none}
+.shift-cell:hover{filter:brightness(0.95)}
+.fill-gt3{background:var(--c-gt3);color:#000}
+.fill-le3{background:var(--c-le3);color:#000}
+.fill-unf{background:var(--c-unf);color:#000}
+.fill-dm{background:var(--c-dm);color:#000}
+.fill-sh{background:var(--c-sh);color:#000}
+.fill-cl{background:var(--c-cl);color:#000}
+.fill-ex{background:var(--c-ex);color:#000}
+.fill-pt{background:var(--c-pt);font-weight:bold;font-size:10px!important}
+.fill-br{background:var(--c-br);font-weight:bold;font-size:11px!important}
+.fill-bm{background:var(--c-bm);font-weight:bold;font-size:11px!important}
+.fill-bk{background:var(--c-bk)}
+.fill-sat{background:#EFD4B9}
+
+.task-cell{height:22px;font-weight:bold;border-bottom:2px solid #000!important}
+.count-cell{height:24px;font-size:11px;border-top:2px solid #000!important;border-bottom:2px solid #000!important}
+.editable:focus{outline:2px solid #1f6fb2;background:#fffbe6!important}
+
+.bottom-wrap{display:flex;gap:32px;margin-top:16px;flex-wrap:wrap;align-items:flex-start}
+.box-table{border-collapse:collapse}
+.box-table td{border:1px solid #000;padding:4px 10px;font-size:12px;text-align:center;min-width:110px;height:22px}
+.box-table tr:first-child td{border-top:2px solid #000}
+.box-table tr:last-child td{border-bottom:2px solid #000}
+.box-table td:first-child{border-left:2px solid #000}
+.box-table td:last-child{border-right:2px solid #000}
+
+.hidden{display:none}
+.warn{background:#fff4e5;border:1px solid #f0b429;padding:8px 10px;margin:10px 14px;font-size:12px;font-family:Arial,sans-serif}
+.panel{margin:0 14px 12px;background:#fff;border:1px solid #cbd2d9;padding:10px;font-family:Arial,sans-serif}
+.panel textarea{width:100%;height:110px;font:12px monospace;margin:6px 0}
+@media print{
+  @page{size:A3 landscape;margin:6mm}
+  header,#tabs,.panel,#msg{display:none!important}
+  .sheet{border:none;margin:0;page-break-after:always;overflow:visible}
+}
+
+/* App shell */
+:root{
+  --navy:#102a43;
+  --green:#237a57;
+  --ink:#142b3b;
+  --muted:#607586;
+  --line:#dce5eb;
+  --canvas:#f3f7f8;
+}
+body{
+  color:var(--ink);
+  background:var(--canvas);
+  font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+header{
+  padding:22px clamp(18px,4vw,56px) 18px;
+  gap:12px;
+  align-items:center;
+  background:linear-gradient(115deg,#102a43,#173c54);
+  box-shadow:0 4px 18px #102a431c;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  margin-bottom:3px;
+}
+.brand-mark{
+  display:grid;
+  place-items:center;
+  width:42px;
+  height:42px;
+  border:1px solid #ffffff36;
+  border-radius:13px;
+  background:#ffffff12;
+  color:#b6edcf;
+  font-size:23px;
+  font-weight:800;
+}
+.brand-copy{display:grid;gap:1px}
+.eyebrow{
+  margin:0;
+  color:#b6d2d9;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.14em;
+}
+header h1{
+  margin:0;
+  color:#fff;
+  font-family:inherit;
+  font-size:22px;
+  letter-spacing:-.03em;
+}
+header label{
+  min-height:38px;
+  gap:8px;
+  padding:6px 10px;
+  border:1px solid #ffffff20;
+  border-radius:8px;
+  background:#ffffff0d;
+  color:#eff6f8;
+  font-size:12px;
+}
+header input[type=file]{
+  max-width:min(280px,48vw);
+  color:#d5e2e8;
+  font-size:11px;
+}
+header input[type=file]::file-selector-button{
+  margin-right:8px;
+  padding:5px 8px;
+  border:0;
+  border-radius:5px;
+  background:#e8f4ee;
+  color:#174b38;
+  font-weight:700;
+  cursor:pointer;
+}
+header button,header select,header input[type=number]{
+  min-height:36px;
+  border:1px solid #d5e0e6;
+  border-radius:8px;
+  font:inherit;
+  font-size:12px;
+}
+header button{
+  padding:7px 11px;
+  color:#1e394a;
+  font-weight:650;
+}
+header button:hover{background:#eaf1f4}
+header button.primary{
+  border-color:#38a879;
+  background:#23845b;
+  color:#fff;
+}
+header button.primary:hover{background:#1b704d}
+header button:disabled{opacity:.65;cursor:wait}
+#tabs{
+  gap:7px;
+  padding:18px clamp(18px,4vw,56px) 0;
+  background:transparent;
+}
+.tab{
+  min-width:110px;
+  padding:9px 13px;
+  border:1px solid var(--line);
+  border-radius:10px 10px 0 0;
+  background:#e9eff2;
+  color:#476071;
+  font-size:12px;
+  transition:background .15s ease,color .15s ease;
+}
+.tab:hover{background:#f8fbfc}
+.tab.active{
+  position:relative;
+  border-color:var(--line);
+  background:#fff;
+  color:var(--navy);
+}
+.tab.active:after{
+  position:absolute;
+  right:10px;
+  bottom:-1px;
+  left:10px;
+  height:2px;
+  background:var(--green);
+  content:"";
+}
+.tab .sub{margin-top:3px;color:#718391;font-size:10px}
+.tab .flag{margin-left:3px;color:#b54736}
+.sheet{
+  margin:0 clamp(18px,4vw,56px) 24px;
+  padding:clamp(12px,2vw,24px);
+  border:1px solid var(--line);
+  border-radius:0 12px 12px 12px;
+  box-shadow:0 12px 30px #173c540a;
+}
+.day-title{
+  margin:2px 0 16px;
+  color:var(--navy);
+  font-size:19px;
+}
+.bottom-wrap{gap:20px}
+.box-table{background:#fff}
+.warn{
+  margin:18px clamp(18px,4vw,56px);
+  padding:11px 14px;
+  border:1px solid #f1d39c;
+  border-radius:9px;
+  background:#fff8e9;
+  color:#674b14;
+  font-family:inherit;
+  font-size:12px;
+}
+.panel{
+  margin:14px clamp(18px,4vw,56px);
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:0 8px 22px #173c5409;
+}
+.panel textarea{
+  min-height:130px;
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:7px;
+}
+.empty-state{
+  display:grid;
+  justify-items:center;
+  max-width:650px;
+  margin:clamp(30px,8vh,84px) auto;
+  padding:0 24px;
+  text-align:center;
+}
+.empty-icon{
+  display:grid;
+  place-items:center;
+  width:58px;
+  height:58px;
+  margin-bottom:16px;
+  border:1px solid #cfe7d9;
+  border-radius:18px;
+  background:#e8f5ed;
+  color:#237a57;
+  font-size:26px;
+}
+.empty-state h2{
+  margin:0;
+  color:var(--navy);
+  font-size:24px;
+  letter-spacing:-.03em;
+}
+.empty-state p{
+  max-width:510px;
+  margin:9px 0 18px;
+  color:var(--muted);
+}
+.empty-state .primary{
+  padding:10px 16px;
+  border:1px solid var(--green);
+  border-radius:8px;
+  background:var(--green);
+  color:#fff;
+  font:inherit;
+  font-weight:700;
+}
+.empty-state .primary:hover{background:#1c694a}
+.empty-note{margin-top:14px;color:#7a8c97;font-size:11px}
+.editable:focus{outline:2px solid #27825f!important}
+@media(max-width:760px){
+  header{padding:18px}
+  header label{flex-wrap:wrap}
+  header input[type=file]{max-width:100%;width:100%}
+  #tabs{gap:5px;padding:14px 18px 0;overflow-x:auto;flex-wrap:nowrap}
+  .tab{min-width:104px}
+  .sheet{margin-right:18px;margin-left:18px}
+  .empty-state{margin-top:42px}
+}
+@media print{
+  body{background:#fff}
+  .sheet{margin:0;padding:0;border-radius:0;box-shadow:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">A</div>
+    <div class="brand-copy">
+      <p class="eyebrow">STAFF SCHEDULING</p>
+      <h1>Aquatic Day Sheet Builder</h1>
+    </div>
+  </div>
+  <label>Roster file: <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv"></label>
+  <label>Week: <select id="week"></select></label>
+  <label>Col width <input type="number" id="colw" value="54" min="28" max="110" style="width:54px"></label>
+  <label><input type="checkbox" id="opsOnly" checked> Operations dept only</label>
+  <label><input type="checkbox" id="show5am"> Include 5:00–5:30am weekday slot</label>
+  <button id="aliasBtn">Aliases &amp; Staff Rules</button>
+  <button id="printBtn">Print / PDF</button>
+  <button class="primary" id="xlsxBtn">Download Day Sheet (.xlsx)</button>
+</header>
+
+<div id="aliases" class="panel hidden">
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:280px">
+      <strong>Display-name aliases</strong> — <code>Surname, Firstname = Display</code>
+      <textarea id="aliasText"></textarea>
+    </div>
+    <div style="flex:1;min-width:280px">
+      <strong>Special Staff Rules</strong> — <code>Surname, Firstname = CLEANING | SHADOW | OMIT</code>
+      <textarea id="ruleText"></textarea>
+    </div>
+  </div>
+  <button class="primary" id="aliasSave">Save &amp; Redraw</button>
+</div>
+
+<div id="msg" class="warn">
+  Upload the <em>Roster – Working Day Sheet</em> export (<code>.xlsx</code> or <code>.csv</code>).
+  Tip: Click any shift bar in the preview to cycle its role/colour (<strong>LG &rarr; Shadow/Training #00B0F0 &rarr; Cleaning #FFC000 &rarr; Omit</strong>). Double-click a shift bar to edit its text directly.
+</div>
+<div id="tabs"></div>
+<main id="out" aria-live="polite"></main>
+
+<script>
+/* ============================ configuration ============================ */
+const DEFAULT_ALIASES = {
+  'Davis, Matildah':'Tildy',
+  'Giblin, Christine':'Crissy',
+  'Whyte, Mitchell':'Mitch W',
+  'Toner, Mitch':'Mitch T',
+  'Adams, John':'John A',
+  'Dunn, John':'John D',
+  'Mascaro, John':'John M',
+  'Carelli, Mariano':'Mario',
+  'Willson-Wait, Giorgia':'Gia',
+  'Kain, Melissa':'Mel',
+  'Ludbey, Lakeisha':'Keish',
+  'Schembri, Matthew':'Matt S',
+  'Rattue, Matthew':'Matt R',
+  'Atkinson, Oscar':'Oscar A',
+  'Skehan, Oscar':'Oscar S',
+  'Davidson, Christopher':'Chris',
+  'Ridgeway, William':'Will',
+  'Bryce, Mackenzie':'Mac B',
+  'Clark, Milla':'Milla C',
+  'Marthick, Emily':'Emily M',
+  'Riley, Annika':'Eli',
+  'Hutchinson, Andrea':'Andrea',
+  'Barber, Tiffany':'Tiffany'
+};
+
+const DEFAULT_RULES = {
+  'Carelli, Mariano':'CLEANING',
+  'Leeworthy, Aaron':'OMIT'
+};
+
+const TAB_NAMES = {
+  1:'MONDAY', 2:'TUESDAY', 3:'WEDNESDAY', 4:'THURSDAY', 5:'FRIDAY',
+  6:'SATURDAY 7am start', 0:'SUNDAY'
+};
+const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = {
+  jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,
+  jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11
+};
+
+const COLORS = {
+  gt3:    'FF92D050', // > 3 hours green
+  le3:    'FFC6E0B4', // <= 3 hours light green
+  unfill: 'FFFF0000', // Empty / needs filling red
+  dm:     'FFFFFF00', // DM yellow
+  shadow: 'FF00B0F0', // Shadow / training blue
+  clean:  'FFFFC000', // Cleaning / spare guard orange-gold
+  extra:  'FF13EFF2', // Extra LG cyan
+  splash: 'FFE7B3FF', // Splash park purple
+  ptest:  'FFF8CBAD', // Pool test peach
+  lgbrk:  'FFB4C6E7', // LG break blue-grey
+  boom:   'FFFC6DE4', // Boom move magenta
+  book:   'FFF3D4F4', // Bookings light pink
+  sat:    'FFEFD4B9'  // Saturday box tan
+};
+
+/* ============================== utilities ============================== */
+const pad = n => String(n).padStart(2,'0');
+const hmm = m => pad(Math.floor(m/60)) + pad(m%60);
+const hh_mm = m => Math.floor(m/60) + ':' + pad(m%60);
+const hhmmCol = m => pad(Math.floor(m/60)) + ':' + pad(m%60);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const t2m = s => { const m = String(s).trim().match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : null; };
+function isTime(v){ if(typeof v==='number') return v>0 && v<1; return /^\d{1,2}:\d{2}(:\d{2})?$/.test(String(v).trim()); }
+function cellMin(v){ if(typeof v==='number') return Math.round(v*1440); return t2m(v); }
+function mondayOf(d){ const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); x.setHours(0,0,0,0); return x; }
+const isNameToken = s => /^[A-Za-z][A-Za-z'\-]+$/.test(s||'');
+const filled = s => !!(s.emp || s.repl);
+const durHrs = s => ((s.end - s.start)/60).toFixed(2).replace(/\.?0+$/,'');
+
+/* ============================== state ================================= */
+let RAW_WB = null, DAYS = {}, weeks = [], curWeek = 0, curDow = 1;
+let aliases = loadJSON('ds-aliases-v2', DEFAULT_ALIASES);
+let staffRules = loadJSON('ds-rules-v2', DEFAULT_RULES);
+let dayEdits = loadJSON('ds-edits-v2', {});
+
+function loadJSON(key, fallback){
+  try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : {...fallback}; }
+  catch(e){ return {...fallback}; }
+}
+function saveEdits(){ localStorage.setItem('ds-edits-v2', JSON.stringify(dayEdits)); }
+function getDayEdit(key){
+  if(!dayEdits[key]){
+    dayEdits[key] = {tasks:{}, counts:{}, shiftOverrides:{}, shiftLabels:{}, bookings:['','','','',''], obs:['','','','','']};
+  }
+  return dayEdits[key];
+}
+
+/* ==================== time-slot & template definitions ================= */
+function buildTimeColumns(dow, include5am){
+  const cols = [];
+  if(dow >= 1 && dow <= 5){
+    // Weekday: 05:30 (or 05:00) to 21:15
+    if(include5am){
+      cols.push({s:300, e:330, label:'5:00- 5:30', w:10, spareTop:true});
+    }
+    for(let m = 330; m < 1260; m += 30){
+      const lbl = `${hh_mm(m)}- ${ m+30 === 780 ? '1300' : hh_mm(m+30) }`;
+      const sp = (m >= 540 && m < 720) || (m >= 960 && m < 1140);
+      cols.push({s:m, e:m+30, label:lbl, w:(m===330||m===630)?8.5:13, splash:sp});
+    }
+    cols.push({s:1260, e:1275, label:'21:00- 21:15', w:13, splash:false});
+  } else if(dow === 6){
+    // Saturday: 06:00 to 19:15
+    for(let m = 360; m < 1140; m += 30){
+      const lbl = `${hh_mm(m)}- ${ m+30 === 780 ? '13:00' : hh_mm(m+30) }`;
+      const sp = (m >= 540 && m < 990);
+      cols.push({s:m, e:m+30, label:lbl, w:m<480?9:13, splash:sp});
+    }
+    cols.push({s:1140, e:1155, label:'19:00- 19:15', w:13, splash:false});
+  } else {
+    // Sunday: 07:30 to 19:15 (with 7:30 lead col)
+    cols.push({s:435, e:450, label:'7:30', w:7, splash:false, isLead:true});
+    for(let m = 450; m < 1140; m += 30){
+      const lbl = `${hh_mm(m)}- ${ m+30 === 780 ? '1300' : hh_mm(m+30) }`;
+      const sp = (m >= 540 && m < 990);
+      cols.push({s:m, e:m+30, label:lbl, w:13, splash:sp});
+    }
+    cols.push({s:1140, e:1155, label:'19:00- 19:15', w:13, splash:false});
+  }
+  return cols;
+}
+
+function defaultTasksFor(dow, cols){
+  const map = {};
+  cols.forEach((c, idx) => {
+    if(c.spareTop){ map[idx] = {text:'SPARE GUARD', type:'cl'}; return; }
+    if(dow >= 1 && dow <= 5){
+      if([330, 540, 780, 1020].includes(c.s)) map[idx] = {text:'POOL TEST', type:'pt'};
+      else if([450, 480, 690, 720, 750, 900, 1050, 1110, 1140].includes(c.s)) map[idx] = {text:'LG BREAK', type:'br'};
+      else if(c.s === 600) map[idx] = {text:'BOOM MOVE 1015-1045', type:'bm'};
+      else if(c.s === 1260) map[idx] = {text:'BOOM MOVE', type:'bm'};
+    } else if(dow === 6){
+      if(c.s === 540) map[idx] = {text:'BOOM MOVE ', type:'bm'};
+      else if([570, 600, 630, 720, 780, 870, 990, 1020, 1050].includes(c.s)) map[idx] = {text:'LG BREAK', type:'br'};
+      else if([660, 900].includes(c.s)) map[idx] = {text:'POOL TEST', type:'pt'};
+    } else {
+      if([600, 630, 720, 780, 840, 930, 990, 1020, 1050].includes(c.s)) map[idx] = {text:'LG BREAK', type:'br'};
+      else if([660, 900].includes(c.s)) map[idx] = {text:'POOL TEST', type:'pt'};
+      else if(c.s === 870) map[idx] = {text:'BOOM MOVE ', type:'bm'};
+    }
+  });
+  return map;
+}
+
+/* ============================== parsing =============================== */
+function classifyRole(role, emp, repl){
+  const who = (repl || emp || '').trim();
+  const rule = staffRules[who];
+  if(rule === 'OMIT') return 'OMIT';
+  if(rule === 'CLEANING') return 'CL';
+  if(rule === 'SHADOW') return 'TR';
+  const r = String(role || '').toLowerCase();
+  if(/duty\s*m|\bdm\b/.test(r)) return 'DM';
+  if(/clean/.test(r)) return 'CL';
+  if(/train|shadow/.test(r)) return 'TR';
+  if(/lifeguard|\blg\b/.test(r)) return 'LG';
+  return 'OT';
+}
+
+function parseWorkbook(wb, onlyOps){
+  const days = {};
+  wb.SheetNames.forEach(n => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:false, defval:''});
+    let cur = null;
+    let hasDeptHeaders = false;
+    rows.forEach(raw => {
+      const line = (raw || []).join(' ');
+      if(/Yawa Aq Ctr\s*\(/i.test(line)) hasDeptHeaders = true;
+    });
+    let inOps = !onlyOps || !hasDeptHeaders;
+
+    rows.forEach((raw, rIdx) => {
+      const cells = (raw || []).map(c => c == null ? '' : String(c).trim());
+      const nz = cells.filter(c => c !== '');
+      if(!nz.length) return;
+      if(nz.some(c => /^start$/i.test(c)) && nz.some(c => /^end$/i.test(c))) return;
+
+      // Check department header
+      const deptCell = nz.find(c => /Yawa Aq Ctr\s*\(/i.test(c));
+      if(deptCell){
+        if(onlyOps && hasDeptHeaders){
+          inOps = /Operations/i.test(deptCell);
+        }
+        return;
+      }
+
+      // Check date header
+      for(const c of nz){
+        const m = c.match(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{4})$/i)
+               || c.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+        if(m){
+          const mon = MONTHS[(m[1]||'').toLowerCase()] ?? MONTHS[(m[2]||'').toLowerCase()];
+          const dd  = isNaN(+m[1]) ? +m[2] : +m[1];
+          if(mon != null){
+            const d = new Date(+m[3], mon, dd);
+            cur = iso(d);
+            days[cur] = days[cur] || {date:d, dow:d.getDay(), shifts:[]};
+          }
+          return;
+        }
+      }
+      if(!cur || !inOps) return;
+
+      let i = -1, j = -1;
+      for(let k = 0; k < cells.length; k++){
+        if(cells[k] === '') continue;
+        if(i < 0){
+          if(isTime(cells[k])) i = k;
+          else if(/^\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/.test(cells[k])){
+            const p = cells[k].split(/[-–]/);
+            cells.splice(k, 1, p[0].trim(), p[1].trim());
+            i = k;
+          } else break;
+        } else {
+          if(isTime(cells[k])) j = k;
+          break;
+        }
+      }
+      if(i < 0 || j < 0) return;
+      const rest = cells.slice(j+1).filter(c => c !== '');
+      const role = rest[0] || 'Unspecified';
+      let emp = (rest[1] || '').replace(/\s+/g,' '), repl = (rest[2] || '').replace(/\s+/g,' ');
+      if(emp && repl && !emp.includes(',') && isNameToken(emp) && isNameToken(repl)){
+        emp = emp + ', ' + repl; repl = '';
+      }
+      const s = cellMin(cells[i]), e = cellMin(cells[j]);
+      if(s == null || e == null || e <= s) return;
+      const code = classifyRole(role, emp, repl);
+      if(code === 'OT' || code === 'OMIT') return;
+      const id = `${cur}-${rIdx}-${s}-${e}`;
+      days[cur].shifts.push({id, start:s, end:e, role, emp, repl, code});
+    });
+  });
+  return days;
+}
+
+/* ====================== naming & layout helpers ======================= */
+function displayName(day, sh){
+  const who = (sh.repl || sh.emp || '').trim();
+  if(!who) return '';
+  if(aliases[who]) return aliases[who];
+  const [last='', first=''] = who.split(',').map(t => t.trim());
+  const firstName = first || last;
+  const clash = day.shifts.some(o => {
+    const w = (o.repl || o.emp || '').trim();
+    if(!w || w === who) return false;
+    const f = (w.split(',')[1] || w.split(',')[0] || '').trim();
+    return f.toLowerCase() === firstName.toLowerCase();
+  });
+  return firstName + (clash && last ? ' ' + last[0] : '');
+}
+
+function effectiveCode(dayKey, sh){
+  const ov = getDayEdit(dayKey).shiftOverrides[sh.id];
+  return ov || sh.code;
+}
+
+function formatShiftText(day, sh, effCode){
+  const dayKey = iso(day.date);
+  const custom = getDayEdit(dayKey).shiftLabels[sh.id];
+  if(custom != null) return custom;
+  const name = displayName(day, sh);
+  if(effCode === 'DM'){
+    return name ? `${hmm(sh.start)}-${hmm(sh.end)} ${name}` : `${hmm(sh.start)}-${hmm(sh.end)}`;
+  }
+  const timeStr = (effCode === 'CL') ? `${hhmmCol(sh.start)}-${hhmmCol(sh.end)}` : `${hmm(sh.start)}-${hmm(sh.end)}`;
+  return name ? `${timeStr} (${durHrs(sh)}) ${name}` : `${timeStr} (${durHrs(sh)})`;
+}
+
+function fillKeyForShift(sh, effCode){
+  if(!filled(sh)) return 'unfill';
+  if(effCode === 'DM') return 'dm';
+  if(effCode === 'TR') return 'shadow';
+  if(effCode === 'CL') return 'clean';
+  return (sh.end - sh.start) > 180 ? 'gt3' : 'le3';
+}
+
+function buildDMLane(day, dmShifts){
+  // Fill standard DM blocks if any gap exists so unfilled DM blocks show in Red (#FF0000)
+  const templates = (day.dow >= 1 && day.dow <= 5)
+    ? [{s:330,e:540},{s:540,e:780},{s:780,e:1020},{s:1020,e:1275}]
+    : (day.dow === 6)
+      ? [{s:390,e:630},{s:630,e:930},{s:930,e:1155}]
+      : [{s:450,e:690},{s:690,e:930},{s:930,e:1155}];
+
+  const list = dmShifts.slice().sort((a,b) => a.start - b.start);
+  if(!list.length){
+    return templates.map((t, idx) => ({id:`dm-gap-${idx}`, start:t.s, end:t.e, role:'DM', emp:'', repl:'', code:'DM'}));
+  }
+  // Check for uncovered template windows
+  const out = [...list];
+  templates.forEach((t, idx) => {
+    const mid = (t.s + t.e) / 2;
+    const covered = out.some(sh => sh.start < mid && sh.end > mid);
+    if(!covered){
+      out.push({id:`dm-gap-${idx}`, start:t.s, end:t.e, role:'DM', emp:'', repl:'', code:'DM'});
+    }
+  });
+  out.sort((a,b) => a.start - b.start);
+  return out;
+}
+
+function packLanes(shifts, maxLanes = 5, tol = 30){
+  // Sort to mirror 19th-25th row ordering: early openers (05:30), then 06:00, then 09:00, etc.
+  const sorted = shifts.slice().sort((a,b) => a.start - b.start || b.end - a.end);
+  const lanes = [];
+  sorted.forEach(sh => {
+    const it = {...sh};
+    let best = -1, bestGap = Infinity;
+    lanes.forEach((ln, idx) => {
+      const last = ln[ln.length - 1];
+      if(it.start >= last.end - tol){
+        const gap = Math.abs(it.start - last.end);
+        if(gap < bestGap){ bestGap = gap; best = idx; }
+      }
+    });
+    if(best >= 0) lanes[best].push(it);
+    else lanes.push([it]);
+  });
+  return lanes;
+}
+
+function mapLaneToCols(lane, cols){
+  const spans = [];
+  let usedUntil = -1;
+  lane.forEach(sh => {
+    let c1 = -1, c2 = -1;
+    for(let i = 0; i < cols.length; i++){
+      if(cols[i].isLead && sh.start >= 450) continue;
+      if(cols[i].e > sh.start && cols[i].s < sh.end){
+        if(c1 < 0) c1 = i;
+        c2 = i;
+      }
+    }
+    if(c1 < 0) return;
+    c1 = Math.max(c1, usedUntil + 1);
+    if(c2 < c1) c2 = c1;
+    usedUntil = c2;
+    spans.push({shift:sh, startCol:c1, endCol:c2});
+  });
+  return spans;
+}
+
+function computeLGCounts(day, lgShifts, cols){
+  return cols.map(c => {
+    if(c.isLead) return {val:'', fill:null};
+    if(c.spareTop) return {val:'SPARE', fill:'clean'};
+    const mid = c.s + (c.e - c.s)/2;
+    const active = lgShifts.filter(s => filled(s) && s.start <= mid && s.end > mid);
+    // Check if there is a 15-min handover overlap inside this 30-min slot (e.g. 10:00-10:15)
+    const q1 = c.s + 7, q2 = c.s + 22;
+    const n1 = lgShifts.filter(s => filled(s) && s.start <= q1 && s.end > q1).length;
+    const n2 = lgShifts.filter(s => filled(s) && s.start <= q2 && s.end > q2).length;
+    if(n1 !== n2 && Math.max(n1, n2) >= 6){
+      return {val:`${Math.max(n1,n2)} (15m)`, fill:'extra'};
+    }
+    const count = active.length;
+    let fill = null;
+    if(day.dow === 6 && count >= 6) fill = 'clean';
+    else if(count >= 6) fill = 'extra';
+    return {val:count, fill};
+  });
+}
+
+/* =============================== Web UI =============================== */
+function renderSheet(day){
+  const key = iso(day.date);
+  const ed = getDayEdit(key);
+  const include5am = show5am.checked || day.shifts.some(s => s.start < 330 && day.dow >= 1 && day.dow <= 5);
+  const cols = buildTimeColumns(day.dow, include5am);
+  const N = cols.length;
+
+  const activeShifts = day.shifts.filter(s => effectiveCode(key, s) !== 'OMIT');
+  const dmShifts = buildDMLane(day, activeShifts.filter(s => effectiveCode(key, s) === 'DM'));
+  const lgShifts = activeShifts.filter(s => effectiveCode(key, s) === 'LG');
+  const trShifts = activeShifts.filter(s => effectiveCode(key, s) === 'TR');
+  const clShifts = activeShifts.filter(s => effectiveCode(key, s) === 'CL');
+
+  const lgLanes = packLanes(lgShifts, 5, 30);
+  while(lgLanes.length < 5) lgLanes.push([]);
+
+  // Row 2: Splash Park Banner
+  let r2 = '';
+  for(let i = 0; i < N; ){
+    if(cols[i].splash){
+      let j = i;
+      while(j + 1 < N && cols[j+1].splash) j++;
+      const span = j - i + 1;
+      const txt = (day.dow >= 1 && day.dow <= 5)
+        ? (cols[i].s < 720 ? 'SPLASH PARK 0900-1200' : 'SPLASH PARK 1600-1900')
+        : (day.dow === 6 ? 'SPLASH PARK 09:00-16:30' : 'SPLASH PARK 09:00-17:00');
+      r2 += `<td colspan="${span}" class="sp-banner">${txt}</td>`;
+      i = j + 1;
+    } else {
+      r2 += `<td class="no-b"></td>`;
+      i++;
+    }
+  }
+
+  // Row 3: Time Header
+  const r3 = cols.map((c, idx) => {
+    const cls = ['time-cell', c.splash ? 'sp' : '', c.spareTop ? 'spare5' : '', idx===0?'b-left-med':'', idx===N-1?'b-right-med':''].filter(Boolean).join(' ');
+    return `<td class="${cls}" style="width:var(--col)">${esc(c.label)}</td>`;
+  }).join('');
+
+  // Helper to render a shift lane row
+  function renderLaneCells(lane, forceCode){
+    const spans = mapLaneToCols(lane, cols);
+    let html = '', cur = 0;
+    spans.forEach(({shift:sh, startCol, endCol}) => {
+      while(cur < startCol){ html += `<td></td>`; cur++; }
+      const span = endCol - startCol + 1;
+      const code = forceCode || effectiveCode(key, sh);
+      const fk = fillKeyForShift(sh, code);
+      const fillCls = {gt3:'fill-gt3', le3:'fill-le3', unfill:'fill-unf', dm:'fill-dm', shadow:'fill-sh', clean:'fill-cl'}[fk] || 'fill-gt3';
+      const label = formatShiftText(day, sh, code);
+      html += `<td colspan="${span}" class="shift-cell ${fillCls}" data-id="${esc(sh.id)}" data-date="${key}" title="Click to cycle role/colour · Double-click to edit text">${esc(label)}</td>`;
+      cur = endCol + 1;
+    });
+    while(cur < N){ html += `<td></td>`; cur++; }
+    return html;
+  }
+
+  // Row 4: DM Row
+  const r4 = renderLaneCells(dmShifts, 'DM');
+
+  // Row 5: Tasks / Pool Test / LG Break / Boom Move
+  const defTasks = defaultTasksFor(day.dow, cols);
+  const r5 = cols.map((c, idx) => {
+    const userVal = ed.tasks[idx];
+    const d = defTasks[idx] || {text:'', type:''};
+    const txt = userVal !== undefined ? userVal : d.text;
+    const upper = txt.toUpperCase();
+    let tCls = '';
+    if(upper.includes('POOL TEST')) tCls = 'fill-pt b-med';
+    else if(upper.includes('BREAK')) tCls = 'fill-br';
+    else if(upper.includes('BOOM')) tCls = 'fill-bm b-med';
+    else if(upper.includes('SPARE')) tCls = 'fill-cl b-med';
+    return `<td class="task-cell editable ${tCls}" contenteditable data-type="task" data-date="${key}" data-slot="${idx}">${esc(txt)}</td>`;
+  }).join('');
+
+  // Row 7: LG Counts
+  const defCounts = computeLGCounts(day, lgShifts, cols);
+  const r7 = cols.map((c, idx) => {
+    const d = defCounts[idx];
+    const txt = ed.counts[idx] !== undefined ? ed.counts[idx] : d.val;
+    const fCls = d.fill === 'clean' ? 'fill-cl' : (d.fill === 'extra' ? 'fill-ex' : '');
+    return `<td class="count-cell editable ${fCls}" contenteditable data-type="count" data-date="${key}" data-slot="${idx}">${esc(txt)}</td>`;
+  }).join('');
+
+  // Rows 8..12+: LG Lanes
+  const lgRowsHtml = lgLanes.map(ln => `<tr style="height:28px">${renderLaneCells(ln)}</tr>`).join('');
+
+  // Shadow / Training & Cleaning rows (Row 14+)
+  const extraRows = [];
+  if(trShifts.length){
+    packLanes(trShifts, 2, 15).forEach(ln => extraRows.push(`<tr style="height:28px">${renderLaneCells(ln, 'TR')}</tr>`));
+  }
+  if(clShifts.length){
+    packLanes(clShifts, 2, 15).forEach(ln => extraRows.push(`<tr style="height:28px">${renderLaneCells(ln, 'CL')}</tr>`));
+  }
+
+  const midTitle = day.dow === 6 ? 'SATURDAY' : 'Bookings ';
+  const midCls = day.dow === 6 ? 'fill-sat' : 'fill-bk';
+
+  return `<section class="sheet" style="--col:${colw.value}px">
+    <div class="day-title">${TAB_NAMES[day.dow]} — ${day.date.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}</div>
+    <table class="ds-grid">
+      <tr style="height:24px">${r2}</tr>
+      <tr style="height:22px">${r3}</tr>
+      <tr style="height:28px">${r4}</tr>
+      <tr style="height:22px">${r5}</tr>
+      <tr style="height:16px"><td colspan="${N}" class="no-b"></td></tr>
+      <tr style="height:22px">${r7}</tr>
+      ${lgRowsHtml}
+      ${extraRows.length ? `<tr style="height:12px"><td colspan="${N}" class="no-b"></td></tr>` + extraRows.join('') : ''}
+    </table>
+
+    <div class="bottom-wrap">
+      <table class="box-table">
+        <tr><td class="fill-le3">NO BREAK</td></tr>
+        <tr><td class="fill-gt3">BREAK</td></tr>
+        <tr><td class="fill-sh">SHADOW</td></tr>
+        <tr><td class="fill-cl">CLEANING</td></tr>
+        <tr><td class="fill-dm"><strong>DM</strong></td></tr>
+        <tr><td class="fill-ex"><strong>Extra LG</strong></td></tr>
+      </table>
+
+      <table class="box-table" style="min-width:220px">
+        <tr><td class="${day.dow===6?'fill-sat':''}"><strong>${midTitle}</strong></td></tr>
+        ${[0,1,2,3,4].map(i => `<tr><td class="${midCls} editable" contenteditable data-type="book" data-date="${key}" data-idx="${i}">${esc(ed.bookings[i]||'')}</td></tr>`).join('')}
+      </table>
+
+      <table class="box-table" style="min-width:260px">
+        <tr><td class="fill-unf"><strong>LG Observations to Prioritise </strong></td></tr>
+        ${[0,1,2,3,4].map(i => `<tr><td class="fill-unf editable" contenteditable data-type="obs" data-date="${key}" data-idx="${i}">${esc(ed.obs[i]||'')}</td></tr>`).join('')}
+      </table>
+    </div>
+  </section>`;
+}
+
+function draw(){
+  const wk = weeks[curWeek] || [];
+  tabs.innerHTML = [1,2,3,4,5,6,0].map(d => {
+    const day = wk.find(x => x.dow === d);
+    const u = day ? day.shifts.filter(s => !filled(s)).length : 0;
+    return `<div class="tab ${d===curDow?'active':''}" data-dow="${d}">${TAB_NAMES[d]}
+      <span class="sub">${day ? day.date.getDate()+'/'+(day.date.getMonth()+1)+' · '+day.shifts.length+' shifts' : 'no data'}
+      ${u ? `<span class="flag">⚠${u}</span>` : ''}</span></div>`;
+  }).join('');
+  const day = wk.find(x => x.dow === curDow);
+  out.innerHTML = day ? renderSheet(day) : '<div class="warn">No roster rows found for that day.</div>';
+}
+
+function showEmptyState(){
+  out.innerHTML = `<section class="empty-state">
+    <div class="empty-icon" aria-hidden="true">↥</div>
+    <h2>Start with your roster</h2>
+    <p>Upload a Working Day Sheet export to build a clear weekly view of lifeguard coverage, duty manager shifts, breaks, bookings, and observations.</p>
+    <button class="primary" type="button" id="emptyUpload">Choose roster file</button>
+    <div class="empty-note">Supports Excel workbooks and CSV files · Your edits stay in this browser</div>
+  </section>`;
+  document.getElementById('emptyUpload').onclick = () => file.click();
+}
+
+/* ================= ExcelJS Export (Matches 19th-25th.xlsx) ================ */
+const fillOf = argb => ({type:'pattern', pattern:'solid', fgColor:{argb}});
+const bThin = {style:'thin', color:{argb:'FF000000'}};
+const bMed  = {style:'medium', color:{argb:'FF000000'}};
+
+function applyBoxBorder(ws, r1, c1, r2, c2, outer=bMed, inner=bThin){
+  for(let r = r1; r <= r2; r++){
+    for(let c = c1; c <= c2; c++){
+      const cell = ws.getCell(r, c);
+      const cur = cell.border || {};
+      cell.border = {
+        top:    r === r1 ? outer : (inner || cur.top),
+        bottom: r === r2 ? outer : (inner || cur.bottom),
+        left:   c === c1 ? outer : (inner || cur.left),
+        right:  c === c2 ? outer : (inner || cur.right)
+      };
+    }
+  }
+}
+
+function safeMerge(ws, r1, c1, r2, c2){
+  if(r1 === r2 && c1 === c2) return;
+  for(let r = r1; r <= r2; r++){
+    for(let c = c1; c <= c2; c++){
+      if(ws.getCell(r, c).isMerged) return;
+    }
+  }
+  try{ ws.mergeCells(r1, c1, r2, c2); }catch(e){}
+}
+
+function buildDayWorksheet(wb, day){
+  const key = iso(day.date);
+  const ed = getDayEdit(key);
+  const include5am = show5am.checked || day.shifts.some(s => s.start < 330 && day.dow >= 1 && day.dow <= 5);
+  const cols = buildTimeColumns(day.dow, include5am);
+  const N = cols.length;
+  // Match 19th-25th.xlsx: Column A is a narrow spacer on Mon-Fri & Sun; Saturday starts at Col A
+  const C0 = (day.dow === 6) ? 1 : 2;
+
+  const ws = wb.addWorksheet(TAB_NAMES[day.dow], {
+    pageSetup:{orientation:'landscape', paperSize:8, fitToPage:true, fitToWidth:1, fitToHeight:1}
+  });
+
+  if(C0 === 2) ws.getColumn(1).width = 3.6;
+  cols.forEach((colCfg, idx) => {
+    ws.getColumn(C0 + idx).width = colCfg.w || 13;
+  });
+
+  const activeShifts = day.shifts.filter(s => effectiveCode(key, s) !== 'OMIT');
+  const dmShifts = buildDMLane(day, activeShifts.filter(s => effectiveCode(key, s) === 'DM'));
+  const lgShifts = activeShifts.filter(s => effectiveCode(key, s) === 'LG');
+  const trShifts = activeShifts.filter(s => effectiveCode(key, s) === 'TR');
+  const clShifts = activeShifts.filter(s => effectiveCode(key, s) === 'CL');
+  const lgLanes  = packLanes(lgShifts, 5, 30);
+  while(lgLanes.length < 5) lgLanes.push([]);
+
+  // Row 1: Day Title
+  ws.getRow(1).height = 21;
+  if(day.dow >= 1 && day.dow <= 5){
+    const titleCell = ws.getCell(1, C0 + 11);
+    titleCell.value = TAB_NAMES[day.dow];
+    titleCell.font = {name:'Calibri', size:16, bold:true};
+  } else {
+    safeMerge(ws, 1, C0 + 2, 1, C0 + N - 1);
+    const titleCell = ws.getCell(1, C0 + 2);
+    titleCell.value = day.dow === 6 ? 'Saturday' : 'SUNDAY';
+    titleCell.font = {name:'Calibri', size:16, bold:true};
+    titleCell.alignment = {horizontal:'center', vertical:'middle'};
+  }
+
+  // Row 2: Splash Park Banners
+  ws.getRow(2).height = 18.75;
+  for(let i = 0; i < N; ){
+    if(cols[i].splash){
+      let j = i;
+      while(j + 1 < N && cols[j+1].splash) j++;
+      const c1 = C0 + i, c2 = C0 + j;
+      safeMerge(ws, 2, c1, 2, c2);
+      const cell = ws.getCell(2, c1);
+      cell.value = (day.dow >= 1 && day.dow <= 5)
+        ? (cols[i].s < 720 ? 'SPLASH PARK 0900-1200' : 'SPLASH PARK 1600-1900')
+        : (day.dow === 6 ? 'SPLASH PARK 09:00-16:30' : 'SPLASH PARK 09:00-17:00');
+      cell.font = {name:'Calibri', size:14, bold:true, color:{argb:'FF000000'}};
+      cell.fill = fillOf(COLORS.splash);
+      cell.alignment = {horizontal:'center', vertical:'middle'};
+      applyBoxBorder(ws, 2, c1, 2, c2, bMed, null);
+      i = j + 1;
+    } else i++;
+  }
+
+  // Row 3: Time Header
+  ws.getRow(3).height = 15;
+  cols.forEach((colCfg, idx) => {
+    const col = C0 + idx;
+    const cell = ws.getCell(3, col);
+    cell.value = colCfg.label;
+    cell.font = {name:'Calibri', size:11, bold:!!colCfg.spareTop};
+    cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+    if(colCfg.spareTop) cell.fill = fillOf(COLORS.clean);
+    else if(colCfg.splash) cell.fill = fillOf(COLORS.splash);
+    cell.border = {
+      top: bMed, bottom: bMed,
+      left: idx === 0 ? bMed : bThin,
+      right: idx === N - 1 ? bMed : bThin
+    };
+  });
+
+  // Helper to write a shift lane into a worksheet row
+  function writeShiftRow(r1, r2, lane, forceCode){
+    ws.getRow(r1).height = 21;
+    const spans = mapLaneToCols(lane, cols);
+    spans.forEach(({shift:sh, startCol, endCol}) => {
+      const c1 = C0 + startCol, c2 = C0 + endCol;
+      safeMerge(ws, r1, c1, r2, c2);
+      const code = forceCode || effectiveCode(key, sh);
+      const fk = fillKeyForShift(sh, code);
+      const fillArgb = COLORS[fk] || COLORS.gt3;
+      const cell = ws.getCell(r1, c1);
+      cell.value = formatShiftText(day, sh, code);
+      cell.font = {name:'Calibri', size:16, bold:true, color:{argb:'FF000000'}};
+      cell.alignment = {horizontal:'center', vertical:'middle'};
+      for(let rr = r1; rr <= r2; rr++){
+        for(let cc = c1; cc <= c2; cc++){
+          ws.getCell(rr, cc).fill = fillOf(fillArgb);
+        }
+      }
+      applyBoxBorder(ws, r1, c1, r2, c2, bMed, null);
+    });
+  }
+
+  // Row 4: DM Row
+  writeShiftRow(4, 4, dmShifts, 'DM');
+
+  // Row 5: Tasks / Pool Test / LG Break / Boom Move
+  ws.getRow(5).height = day.dow === 6 ? 26 : 15;
+  const defTasks = defaultTasksFor(day.dow, cols);
+  cols.forEach((colCfg, idx) => {
+    const col = C0 + idx;
+    const d = defTasks[idx] || {text:'', type:''};
+    const txt = ed.tasks[idx] !== undefined ? ed.tasks[idx] : d.text;
+    if(!txt) return;
+    const cell = ws.getCell(5, col);
+    cell.value = txt;
+    const upper = txt.toUpperCase();
+    if(upper.includes('POOL TEST')){
+      cell.fill = fillOf(COLORS.ptest);
+      cell.font = {name:'Calibri', size:10, bold:true};
+      cell.border = {top:bMed, bottom:bMed, left:bMed, right:bMed};
+    } else if(upper.includes('BREAK')){
+      cell.fill = fillOf(COLORS.lgbrk);
+      cell.font = {name:'Calibri', size:11, bold:true};
+      cell.border = {top:bThin, bottom:bMed, left:bThin, right:bThin};
+    } else if(upper.includes('BOOM')){
+      cell.fill = fillOf(COLORS.boom);
+      cell.font = {name:'Calibri', size:11, bold:true};
+      cell.border = {top:bMed, bottom:bMed, left:bMed, right:bMed};
+    } else if(upper.includes('SPARE')){
+      cell.fill = fillOf(COLORS.clean);
+      cell.font = {name:'Calibri', size:10, bold:true};
+      cell.border = {top:bMed, bottom:bMed, left:bMed, right:bMed};
+    } else {
+      cell.font = {name:'Calibri', size:10, bold:true};
+      cell.border = {top:bThin, bottom:bMed, left:bThin, right:bThin};
+    }
+    cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+  });
+
+  // Row 6: Spacer
+  ws.getRow(6).height = 15;
+
+  // Row 7: LG Counts
+  ws.getRow(7).height = 18;
+  const defCounts = computeLGCounts(day, lgShifts, cols);
+  cols.forEach((colCfg, idx) => {
+    const col = C0 + idx;
+    const d = defCounts[idx];
+    const val = ed.counts[idx] !== undefined ? ed.counts[idx] : d.val;
+    if(val === '' && colCfg.isLead) return;
+    const cell = ws.getCell(7, col);
+    cell.value = isNaN(+val) || val === '' ? val : +val;
+    cell.font = {name:'Calibri', size:11, bold:false};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    if(d.fill === 'clean') cell.fill = fillOf(COLORS.clean);
+    else if(d.fill === 'extra') cell.fill = fillOf(COLORS.extra);
+    cell.border = {
+      top: bMed, bottom: bMed,
+      left: idx === 0 ? bMed : bThin,
+      right: idx === N - 1 ? bMed : bThin
+    };
+  });
+
+  // Rows 8+: LG Lanes
+  let r = 8;
+  lgLanes.forEach(ln => {
+    writeShiftRow(r, r, ln);
+    r++;
+  });
+
+  // Shadow / Training & Cleaning Rows
+  if(trShifts.length){
+    packLanes(trShifts, 2, 15).forEach(ln => {
+      writeShiftRow(r, r, ln, 'TR');
+      r++;
+    });
+  }
+  if(clShifts.length){
+    r = Math.max(r + 1, 14);
+    packLanes(clShifts, 2, 15).forEach(ln => {
+      ws.getRow(r).height = 12;
+      ws.getRow(r+1).height = 15;
+      writeShiftRow(r, r+1, ln, 'CL');
+      r += 2;
+    });
+  }
+
+  // Bottom Legend, Bookings, and LG Observations Blocks (Row 16 on Weekdays, 18 on Sat, 15 on Sun)
+  const baseRow = day.dow === 6 ? Math.max(r + 2, 18) : (day.dow === 0 ? Math.max(r + 1, 15) : Math.max(r, 16));
+  const legCol = day.dow === 6 ? 4 : 2;  // B on weekdays/Sun, D on Sat
+  const bkCol  = day.dow === 6 ? 12 : 6; // F on weekdays/Sun, L on Sat
+  const obCol  = day.dow === 6 ? 18 : 15;// O on weekdays/Sun, R on Sat
+
+  const legendItems = [
+    {txt:'NO BREAK', fill:COLORS.le3, bold:false},
+    {txt:'BREAK',    fill:COLORS.gt3, bold:false},
+    {txt:day.dow===6?'Shadow':'SHADOW',   fill:COLORS.shadow, bold:false},
+    {txt:day.dow===6?'Cleaning':'CLEANING', fill:COLORS.clean, bold:false},
+    {txt:'DM',       fill:COLORS.dm,  bold:true},
+    {txt:'Extra LG', fill:COLORS.extra, bold:true}
+  ];
+  legendItems.forEach((it, idx) => {
+    const rr = baseRow + idx;
+    ws.getRow(rr).height = 15.75;
+    safeMerge(ws, rr, legCol, rr, legCol + 2);
+    for(let cc = legCol; cc <= legCol + 2; cc++) ws.getCell(rr, cc).fill = fillOf(it.fill);
+    const cell = ws.getCell(rr, legCol);
+    cell.value = it.txt;
+    cell.font = {name:'Calibri', size:12, bold:it.bold, color:{argb:'FF000000'}};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+  });
+  applyBoxBorder(ws, baseRow, legCol, baseRow + 5, legCol + 2, bMed, bThin);
+
+  // Bookings / Saturday Box
+  safeMerge(ws, baseRow, bkCol, baseRow, bkCol + 3);
+  const bkHdr = ws.getCell(baseRow, bkCol);
+  bkHdr.value = day.dow === 6 ? 'SATURDAY' : 'Bookings ';
+  bkHdr.font = {name:'Calibri', size:12, bold:true};
+  bkHdr.alignment = {horizontal:'center', vertical:'middle'};
+  if(day.dow === 6){
+    for(let cc = bkCol; cc <= bkCol + 3; cc++) ws.getCell(baseRow, cc).fill = fillOf(COLORS.sat);
+  }
+  const bkFill = day.dow === 6 ? COLORS.sat : COLORS.book;
+  for(let i = 0; i < 5; i++){
+    const rr = baseRow + 1 + i;
+    safeMerge(ws, rr, bkCol, rr, bkCol + 3);
+    for(let cc = bkCol; cc <= bkCol + 3; cc++) ws.getCell(rr, cc).fill = fillOf(bkFill);
+    const cell = ws.getCell(rr, bkCol);
+    cell.value = ed.bookings[i] || '';
+    cell.font = {name:'Calibri', size:11};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+  }
+  applyBoxBorder(ws, baseRow, bkCol, baseRow + 5, bkCol + 3, bMed, bThin);
+
+  // LG Observations to Prioritise Box
+  safeMerge(ws, baseRow, obCol, baseRow, obCol + 4);
+  for(let cc = obCol; cc <= obCol + 4; cc++) ws.getCell(baseRow, cc).fill = fillOf(COLORS.unfill);
+  const obHdr = ws.getCell(baseRow, obCol);
+  obHdr.value = 'LG Observations to Prioritise ';
+  obHdr.font = {name:'Calibri', size:12, bold:true};
+  obHdr.alignment = {horizontal:'center', vertical:'middle'};
+  for(let i = 0; i < 5; i++){
+    const rr = baseRow + 1 + i;
+    safeMerge(ws, rr, obCol, rr, obCol + 4);
+    for(let cc = obCol; cc <= obCol + 4; cc++) ws.getCell(rr, cc).fill = fillOf(COLORS.unfill);
+    const cell = ws.getCell(rr, obCol);
+    cell.value = ed.obs[i] || '';
+    cell.font = {name:'Calibri', size:11};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+  }
+  applyBoxBorder(ws, baseRow, obCol, baseRow + 5, obCol + 4, bMed, bThin);
+
+  return ws;
+}
+
+async function exportDaySheets(wk){
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Aquatic Day Sheet Builder';
+  wb.created = new Date();
+  [1,2,3,4,5,6,0].forEach(d => {
+    const day = wk.find(x => x.dow === d);
+    if(day) buildDayWorksheet(wb, day);
+  });
+  if(!wb.worksheets.length) throw new Error('No days in this week to export.');
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement('a');
+  const firstDate = wk[0].date.getDate();
+  const lastDate = wk[wk.length - 1].date.getDate();
+  a.href = URL.createObjectURL(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  a.download = `${firstDate}th-${lastDate}th.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* =============================== Events =============================== */
+function reloadWorkbook(){
+  if(!RAW_WB) return;
+  DAYS = parseWorkbook(RAW_WB, opsOnly.checked);
+  const list = Object.values(DAYS).sort((a,b) => a.date - b.date);
+  if(!list.length){
+    weeks = [];
+    tabs.innerHTML = '';
+    msg.textContent = 'No shift rows were found. Check that the selected file is a Working Day Sheet export and try again.';
+    showEmptyState();
+    return;
+  }
+  const byWeek = {};
+  list.forEach(d => { const k = iso(mondayOf(d.date)); (byWeek[k] = byWeek[k] || []).push(d); });
+  const keys = Object.keys(byWeek).sort();
+  weeks = keys.map(k => byWeek[k]);
+  week.innerHTML = keys.map((k, i) => {
+    const m = new Date(k + 'T00:00'), e = new Date(m); e.setDate(e.getDate() + 6);
+    return `<option value="${i}">w/c ${m.toLocaleDateString('en-AU')} – ${e.toLocaleDateString('en-AU')}</option>`;
+  }).join('');
+  if(curWeek >= weeks.length) curWeek = 0;
+  week.value = String(curWeek);
+  msg.textContent = `Loaded ${list.length} day(s) across ${weeks.length} week(s). Click a shift bar to cycle its role; double-click to edit its label.`;
+  draw();
+}
+
+file.onchange = async ev => {
+  const f = ev.target.files[0]; if(!f) return;
+  try{
+    if(typeof XLSX === 'undefined') throw new Error('The spreadsheet reader did not load. Check your internet connection and reload the page.');
+    const workbook = XLSX.read(await f.arrayBuffer(), {cellDates:false});
+    if(!workbook.SheetNames.length) throw new Error('The selected file contains no worksheets.');
+    RAW_WB = workbook;
+    curWeek = 0; curDow = 1;
+    reloadWorkbook();
+  }catch(err){
+    console.error('Roster upload failed:', err);
+    RAW_WB = null; DAYS = {}; weeks = [];
+    tabs.innerHTML = '';
+    msg.textContent = `Could not read "${f.name}". ${err.message || 'Check the file and try again.'}`;
+    showEmptyState();
+  }
+};
+
+tabs.onclick = e => { const t = e.target.closest('.tab'); if(t){ curDow = +t.dataset.dow; draw(); } };
+week.onchange = e => { curWeek = +e.target.value; draw(); };
+colw.onchange = draw;
+show5am.onchange = draw;
+opsOnly.onchange = reloadWorkbook;
+
+// Click a shift cell to cycle its role/colour; double-click to edit its label text
+let clickTimer = null;
+out.addEventListener('click', e => {
+  const cell = e.target.closest('.shift-cell');
+  if(!cell) return;
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => {
+    const id = cell.dataset.id, k = cell.dataset.date;
+    if(!id || id.startsWith('dm-gap-')) return;
+    const ed = getDayEdit(k);
+    const order = ['LG', 'TR', 'CL', 'DM', 'OMIT'];
+    const cur = ed.shiftOverrides[id] || 'LG';
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    ed.shiftOverrides[id] = next;
+    saveEdits();
+    draw();
+  }, 220);
+});
+
+out.addEventListener('dblclick', e => {
+  const cell = e.target.closest('.shift-cell');
+  if(!cell) return;
+  clearTimeout(clickTimer);
+  const id = cell.dataset.id, k = cell.dataset.date;
+  const nextTxt = prompt('Edit shift display label (leave blank to reset to auto):', cell.textContent);
+  if(nextTxt === null) return;
+  const ed = getDayEdit(k);
+  if(nextTxt.trim() === '') delete ed.shiftLabels[id];
+  else ed.shiftLabels[id] = nextTxt.trim();
+  saveEdits();
+  draw();
+});
+
+out.addEventListener('input', e => {
+  const el = e.target;
+  const k = el.dataset.date, type = el.dataset.type;
+  if(!k || !type) return;
+  const ed = getDayEdit(k);
+  if(type === 'task') ed.tasks[el.dataset.slot] = el.textContent.trim();
+  else if(type === 'count') ed.counts[el.dataset.slot] = el.textContent.trim();
+  else if(type === 'book') ed.bookings[+el.dataset.idx] = el.textContent.trim();
+  else if(type === 'obs') ed.obs[+el.dataset.idx] = el.textContent.trim();
+  saveEdits();
+});
+
+aliasBtn.onclick = () => {
+  aliasText.value = Object.entries(aliases).map(([k,v]) => `${k} = ${v}`).join('\n');
+  ruleText.value  = Object.entries(staffRules).map(([k,v]) => `${k} = ${v}`).join('\n');
+  document.getElementById('aliases').classList.toggle('hidden');
+};
+
+aliasSave.onclick = () => {
+  const aObj = {}, rObj = {};
+  aliasText.value.split('\n').forEach(l => {
+    const i = l.indexOf('=');
+    if(i > 0) aObj[l.slice(0,i).trim()] = l.slice(i+1).trim();
+  });
+  ruleText.value.split('\n').forEach(l => {
+    const i = l.indexOf('=');
+    if(i > 0) rObj[l.slice(0,i).trim()] = l.slice(i+1).trim().toUpperCase();
+  });
+  aliases = aObj; staffRules = rObj;
+  localStorage.setItem('ds-aliases-v2', JSON.stringify(aObj));
+  localStorage.setItem('ds-rules-v2', JSON.stringify(rObj));
+  document.getElementById('aliases').classList.add('hidden');
+  reloadWorkbook();
+};
+
+printBtn.onclick = () => {
+  const wk = weeks[curWeek] || [];
+  if(!wk.length) return alert('Load a roster first.');
+  const keep = out.innerHTML;
+  out.innerHTML = [1,2,3,4,5,6,0].map(d => {
+    const day = wk.find(x => x.dow === d);
+    return day ? renderSheet(day) : '';
+  }).join('');
+  window.print();
+  setTimeout(() => { out.innerHTML = keep; draw(); }, 600);
+};
+
+xlsxBtn.onclick = async () => {
+  const wk = weeks[curWeek] || [];
+  if(!wk.length) return alert('Load a roster first.');
+  xlsxBtn.disabled = true;
+  const label = xlsxBtn.textContent;
+  xlsxBtn.textContent = 'Building…';
+  try{
+    await exportDaySheets(wk);
+  }catch(err){
+    console.error(err);
+    alert('Export failed: ' + err.message);
+  }finally{
+    xlsxBtn.disabled = false;
+    xlsxBtn.textContent = label;
+  }
+};
+
+showEmptyState();
+</script>
+</body>
+</html>
